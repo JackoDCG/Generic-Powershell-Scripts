@@ -1,0 +1,4 @@
+# Register font in registry
+$fontName = "Museo 300"
+$fontFile = "Museo-300.ttf"
+New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts" -Name "$fontName (TrueType)" -Value $fontFile -PropertyType String -Force
