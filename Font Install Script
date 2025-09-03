@@ -1,4 +1,41 @@
-# Register font in registry
-$fontName = "Museo 300"
-$fontFile = "Museo-300.ttf"
-New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts" -Name "$fontName (TrueType)" -Value $fontFile -PropertyType String -Force
+# Define fonts with their proper display names
+$fonts = @{
+    "museo-300.ttf" = "Museo 300"
+    "museo-500.ttf" = "Museo 500"
+}
+
+foreach ($fontFile in $fonts.Keys) {
+    $fontPath = "C:\Windows\Fonts\$fontFile"
+    $fontDisplayName = $fonts[$fontFile]
+    
+    if (Test-Path $fontPath) {
+        # Remove any existing registry entries first
+        Remove-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts" -Name "$fontDisplayName (TrueType)" -ErrorAction SilentlyContinue
+        
+        # Add proper registry entry
+        New-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts" -Name "$fontDisplayName (TrueType)" -Value $fontFile -PropertyType String -Force
+        
+        # Use AddFontResource to register with Windows
+        Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public class FontAPI {
+    [DllImport("gdi32.dll")]
+    public static extern int AddFontResource(string lpFileName);
+    [DllImport("user32.dll")]
+    public static extern int SendMessage(int hWnd, uint Msg, int wParam, int lParam);
+}
+"@
+        
+        [FontAPI]::AddFontResource($fontPath)
+        
+        Write-Host "$fontDisplayName registered"
+    }
+}
+
+# Broadcast font change message to all windows
+[FontAPI]::SendMessage(0xFFFF, 0x001D, 0, 0)
+
+# Force Windows to refresh font cache
+Write-Host "Refreshing font cache..."
+Start-Sleep -Seconds 2
