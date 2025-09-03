@@ -1,4 +1,4 @@
-# Define fonts with their proper display names
+# Define fonts with their proper display names. This relies on the fonts already being present in C:\Windows\Fonts. To amend this you can change the below font files & names to whatever is necessary.
 $fonts = @{
     "museo-300.ttf" = "Museo 300"
     "museo-500.ttf" = "Museo 500"
