@@ -1,0 +1,17 @@
+$inputFolder = "input file path"
+$outputFolder = "output file path"
+
+New-Item -ItemType Directory -Path $outputFolder -Force | Out-Null
+
+Get-ChildItem $inputFolder -Filter *.bin | ForEach-Object {
+    $bytes = [System.IO.File]::ReadAllBytes($_.FullName)
+
+    # Look for PDF header (%PDF)
+    $pdfStart = [System.Text.Encoding]::ASCII.GetString($bytes).IndexOf("%PDF")
+
+    if ($pdfStart -ge 0) {
+        $pdfBytes = $bytes[$pdfStart..($bytes.Length - 1)]
+        $outFile = Join-Path $outputFolder ($_.BaseName + ".pdf")
+        [System.IO.File]::WriteAllBytes($outFile, $pdfBytes)
+    }
+}
