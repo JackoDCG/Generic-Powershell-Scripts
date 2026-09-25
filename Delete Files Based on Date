@@ -1,0 +1,71 @@
+# Prompt for inputs
+$FolderPath = Read-Host "Enter the folder path to clean"
+$FolderPath = $FolderPath.Trim()
+
+if (-not (Test-Path $FolderPath)) {
+    Write-Host "Folder does not exist: $FolderPath" -ForegroundColor Red
+    exit
+}
+
+$DateInput = Read-Host "Enter the cut-off date (e.g. 01/01/2024)"
+
+try {
+    $CutOffDate = Get-Date $DateInput
+}
+catch {
+    Write-Host "Invalid date entered." -ForegroundColor Red
+    exit
+}
+
+# Create report filename
+$TimeStamp = Get-Date -Format "yyyyMMdd_HHmmss"
+$ReportPath = "C:\Temp\DeletionReport_$TimeStamp.csv"
+
+# Find files to be deleted
+$Items = @(
+    Get-ChildItem -Path $FolderPath -Recurse -File -Force -ErrorAction SilentlyContinue |
+    Where-Object {
+        $_.LastWriteTime -ge $CutOffDate
+    } |
+    Select-Object FullName, LastWriteTime
+)
+`
+
+# Export report before deletion
+$Items | Export-Csv -Path $ReportPath -NoTypeInformation
+
+Write-Host ""
+Write-Host "Files identified for deletion: $($Items.Count)" -ForegroundColor Yellow
+Write-Host "Report saved to: $ReportPath"
+Write-Host ""
+
+if ($Items.Count -eq 0) {
+    Write-Host "No files match the criteria. Nothing to delete." -ForegroundColor Green
+    exit
+}
+
+# Confirmation prompt
+$Confirmation = Read-Host "Continue and delete these $($Items.Count) files? (Y/N)"
+
+if ($Confirmation -notmatch '^(Y|y)$') {
+    Write-Host "Deletion cancelled." -ForegroundColor Yellow
+    exit
+}
+
+# Delete files
+$DeletedCount = 0
+
+foreach ($Item in $Items) {
+    try {
+        Remove-Item $Item.FullName -Force -ErrorAction Stop
+        $DeletedCount++
+    }
+    catch {
+        Write-Warning "Failed to delete $($Item.FullName)"
+    }
+}
+
+Write-Host ""
+Write-Host "Deletion complete." -ForegroundColor Green
+Write-Host "Files successfully deleted: $DeletedCount"
+Write-Host "Original report: $ReportPath"
