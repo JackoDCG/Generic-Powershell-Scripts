@@ -26,13 +26,13 @@ $Items = @(
     Get-ChildItem -Path $FolderPath -Recurse -File -Force -ErrorAction SilentlyContinue |
     Where-Object {
         $_.LastWriteTime -ge $CutOffDate
-    } |
-    Select-Object FullName, LastWriteTime
+    }
 )
-`
 
 # Export report before deletion
-$Items | Export-Csv -Path $ReportPath -NoTypeInformation
+$Items |
+    Select-Object FullName, LastWriteTime |
+    Export-Csv -Path $ReportPath -NoTypeInformation
 
 Write-Host ""
 Write-Host "Files identified for deletion: $($Items.Count)" -ForegroundColor Yellow
@@ -44,7 +44,7 @@ if ($Items.Count -eq 0) {
     exit
 }
 
-# Confirmation prompt
+# Confirmation
 $Confirmation = Read-Host "Continue and delete these $($Items.Count) files? (Y/N)"
 
 if ($Confirmation -notmatch '^(Y|y)$') {
@@ -54,18 +54,42 @@ if ($Confirmation -notmatch '^(Y|y)$') {
 
 # Delete files
 $DeletedCount = 0
+$FailedFiles = @()
 
 foreach ($Item in $Items) {
+
     try {
-        Remove-Item $Item.FullName -Force -ErrorAction Stop
-        $DeletedCount++
+
+        Remove-Item -LiteralPath $Item.FullName -Force -ErrorAction Stop
+
+        if (-not (Test-Path -LiteralPath $Item.FullName)) {
+            $DeletedCount++
+        }
+        else {
+            $FailedFiles += $Item.FullName
+        }
+
     }
     catch {
-        Write-Warning "Failed to delete $($Item.FullName)"
+        $FailedFiles += $Item.FullName
     }
 }
+
+# Verify what remains
+$Remaining = @(
+    Get-ChildItem -Path $FolderPath -Recurse -File -Force -ErrorAction SilentlyContinue |
+    Where-Object {
+        $_.LastWriteTime -ge $CutOffDate
+    }
+)
 
 Write-Host ""
 Write-Host "Deletion complete." -ForegroundColor Green
 Write-Host "Files successfully deleted: $DeletedCount"
+
+if ($FailedFiles.Count -gt 0) {
+    Write-Host "Files that could not be deleted: $($FailedFiles.Count)" -ForegroundColor Yellow
+}
+
+Write-Host "Files remaining matching criteria: $($Remaining.Count)"
 Write-Host "Original report: $ReportPath"
