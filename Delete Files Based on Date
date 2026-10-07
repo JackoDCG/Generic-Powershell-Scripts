@@ -7,7 +7,7 @@ if (-not (Test-Path $FolderPath)) {
     exit
 }
 
-$DateInput = Read-Host "Enter the cut-off date (e.g. 01/01/2024)"
+$DateInput = Read-Host "Enter the cut-off date, inclusive (DD/MM/YYY)"
 
 try {
     $CutOffDate = Get-Date $DateInput
